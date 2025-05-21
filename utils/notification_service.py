@@ -1303,12 +1303,12 @@ if __name__ == "__main__":
                 model_name = model_name[len("models_") :]
             model_job_links[model_name] = job_result["job_link"]
 
-        with open(f"ci_results_{job_name}/model_job_links.json", "w", encoding="UTF-8") as fp:
+        with open(f"ci_results_{job_name}/job_links.json", "w", encoding="UTF-8") as fp:
             json.dump(model_job_links, fp, indent=4, ensure_ascii=False)
 
         api.upload_file(
-            path_or_fileobj=f"ci_results_{job_name}/model_job_links.json",
-            path_in_repo=f"{report_repo_folder}/ci_results_{job_name}/model_job_links.json",
+            path_or_fileobj=f"ci_results_{job_name}/job_links.json",
+            path_in_repo=f"{report_repo_folder}/ci_results_{job_name}/job_links.json",
             repo_id="hf-internal-testing/transformers_daily_ci",
             repo_type="dataset",
             token=os.environ.get("TRANSFORMERS_CI_RESULTS_UPLOAD_TOKEN", None),
