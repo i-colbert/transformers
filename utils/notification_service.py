@@ -665,11 +665,11 @@ class Message:
 
         text = f"{self.n_failures} failures out of {self.n_tests} tests," if self.n_failures else "All tests passed."
 
-        self.thread_ts = client.chat_postMessage(
-            channel=SLACK_REPORT_CHANNEL_ID,
-            blocks=payload,
-            text=text,
-        )
+        # self.thread_ts = client.chat_postMessage(
+        #     channel=SLACK_REPORT_CHANNEL_ID,
+        #     blocks=payload,
+        #     text=text,
+        # )
 
     def get_reply_blocks(self, job_name, job_result, failures, device, text):
         """
@@ -717,14 +717,25 @@ class Message:
         if prev_ci_artifacts is None:
             return []
 
-        sorted_dict = sorted(self.model_results.items(), key=lambda t: t[0])
+        if job_name == "run_models_gpu":
+            model_results = self.model_results
+        else:
+            model_results = self.additional_results[job_to_test_map[job_name]]
 
+        if "failures" in model_results:
+            model_results = {"dummy": model_results}
+
+        sorted_dict = sorted(model_results.items(), key=lambda t: t[0])
+
+        job = job_to_test_map[job_name]
         prev_model_results = {}
         if (
             f"ci_results_{job_name}" in prev_ci_artifacts
-            and "model_results.json" in prev_ci_artifacts[f"ci_results_{job_name}"]
+            and f"{test_to_result_name[job]}_results.json" in prev_ci_artifacts[f"ci_results_{job_name}"]
         ):
-            prev_model_results = json.loads(prev_ci_artifacts[f"ci_results_{job_name}"]["model_results.json"])
+            prev_model_results = json.loads(prev_ci_artifacts[f"ci_results_{job_name}"][f"{test_to_result_name[job]}_results.json"])
+            if "failures" in prev_model_results:
+                prev_model_results = {"dummy": prev_model_results}
 
         all_failure_lines = {}
         for job, job_result in sorted_dict:
@@ -1161,6 +1172,8 @@ if __name__ == "__main__":
     # `additional_files`. This is used to remove some entries in `additional_files` that are not concerned by a
     # specific job. See below.
     job_to_test_map = {
+        "run_models_gpu": "Models",
+        "run_trainer_and_fsdp_gpu": "Trainer & FSDP",
         "run_pipelines_torch_gpu": "PyTorch pipelines",
         "run_pipelines_tf_gpu": "TensorFlow pipelines",
         "run_examples_gpu": "Examples directory",
@@ -1261,15 +1274,21 @@ if __name__ == "__main__":
     is_nvidia_daily_ci_workflow = os.environ.get("GITHUB_WORKFLOW_REF").startswith(nvidia_daily_ci_workflow)
     is_scheduled_ci_run = os.environ.get("GITHUB_EVENT_NAME") == "schedule"
 
-    # Only the model testing job is concerned: this condition is to avoid other jobs to upload the empty list as
-    # results.
-    if job_name == "run_models_gpu":
-        with open(f"ci_results_{job_name}/model_results.json", "w", encoding="UTF-8") as fp:
+    # Must have the same keys as in `additional_results`.
+    # The values are used as the file names where to save the corresponding CI job results.
+    test_to_result_name = {
+        "Models": "model",
+        "Trainer & FSDP": "trainer_and_fsdp",
+    }
+
+    if job_name in ["run_models_gpu", "run_trainer_and_fsdp_gpu"]:
+        job = job_to_test_map[job_name]
+        with open(f"ci_results_{job_name}/{test_to_result_name[job]}_results.json", "w", encoding="UTF-8") as fp:
             json.dump(model_results, fp, indent=4, ensure_ascii=False)
 
         api.upload_file(
-            path_or_fileobj=f"ci_results_{job_name}/model_results.json",
-            path_in_repo=f"{report_repo_folder}/ci_results_{job_name}/model_results.json",
+            path_or_fileobj=f"ci_results_{job_name}/{test_to_result_name[job]}_results.json",
+            path_in_repo=f"{report_repo_folder}/ci_results_{job_name}/{test_to_result_name[job]}_results.json",
             repo_id="hf-internal-testing/transformers_daily_ci",
             repo_type="dataset",
             token=os.environ.get("TRANSFORMERS_CI_RESULTS_UPLOAD_TOKEN", None),
@@ -1297,12 +1316,14 @@ if __name__ == "__main__":
 
     # Must have the same keys as in `additional_results`.
     # The values are used as the file names where to save the corresponding CI job results.
-    test_to_result_name = {
-        "PyTorch pipelines": "torch_pipeline",
-        "TensorFlow pipelines": "tf_pipeline",
-        "Examples directory": "example",
-        "DeepSpeed": "deepspeed",
-    }
+    test_to_result_name.update(
+        {
+            "PyTorch pipelines": "torch_pipeline",
+            "TensorFlow pipelines": "tf_pipeline",
+            "Examples directory": "example",
+            "DeepSpeed": "deepspeed",
+        }
+    )
     for job, job_result in additional_results.items():
         with open(f"ci_results_{job_name}/{test_to_result_name[job]}_results.json", "w", encoding="UTF-8") as fp:
             json.dump(job_result, fp, indent=4, ensure_ascii=False)
@@ -1319,20 +1340,18 @@ if __name__ == "__main__":
     other_workflow_run_ids = []
 
     if is_scheduled_ci_run:
-        # TODO: remove `if job_name == "run_models_gpu"`
-        if job_name == "run_models_gpu":
-            prev_workflow_run_id = get_last_daily_ci_workflow_run_id(
-                token=os.environ["ACCESS_REPO_INFO_TOKEN"], workflow_id=workflow_id
+        prev_workflow_run_id = get_last_daily_ci_workflow_run_id(
+            token=os.environ["ACCESS_REPO_INFO_TOKEN"], workflow_id=workflow_id
+        )
+        # For a scheduled run that is not the Nvidia's scheduled daily CI, add Nvidia's scheduled daily CI run as a target to compare.
+        if not is_nvidia_daily_ci_workflow:
+            # The id of the workflow `.github/workflows/self-scheduled-caller.yml` (not of a workflow run of it).
+            other_workflow_id = "90575235"
+            # We need to get the Nvidia's scheduled daily CI run that match the current run (i.e. run with the same commit SHA)
+            other_workflow_run_id = get_last_daily_ci_workflow_run_id(
+                token=os.environ["ACCESS_REPO_INFO_TOKEN"], workflow_id=other_workflow_id, commit_sha=ci_sha
             )
-            # For a scheduled run that is not the Nvidia's scheduled daily CI, add Nvidia's scheduled daily CI run as a target to compare.
-            if not is_nvidia_daily_ci_workflow:
-                # The id of the workflow `.github/workflows/self-scheduled-caller.yml` (not of a workflow run of it).
-                other_workflow_id = "90575235"
-                # We need to get the Nvidia's scheduled daily CI run that match the current run (i.e. run with the same commit SHA)
-                other_workflow_run_id = get_last_daily_ci_workflow_run_id(
-                    token=os.environ["ACCESS_REPO_INFO_TOKEN"], workflow_id=other_workflow_id, commit_sha=ci_sha
-                )
-                other_workflow_run_ids.append(other_workflow_run_id)
+            other_workflow_run_ids.append(other_workflow_run_id)
     else:
         prev_workflow_run_id = os.environ["PREV_WORKFLOW_RUN_ID"]
         other_workflow_run_id = os.environ["OTHER_WORKFLOW_RUN_ID"]
@@ -1385,4 +1404,4 @@ if __name__ == "__main__":
     # send report only if there is any failure (for push CI)
     if message.n_failures or (ci_event != "push" and not ci_event.startswith("Push CI (AMD)")):
         message.post()
-        message.post_reply()
+        # message.post_reply()
