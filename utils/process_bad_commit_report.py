@@ -24,10 +24,12 @@ from huggingface_hub import HfApi
 if __name__ == "__main__":
     api = HfApi()
 
+    job_name = os.environ.get("JOB_NAME")
+
     with open("new_failures_with_bad_commit.json") as fp:
         data = json.load(fp)
 
-    with open("ci_results_run_models_gpu/job_links.json") as fp:
+    with open(f"ci_results_{job_name}/job_links.json") as fp:
         model_job_links = json.load(fp)
 
     # TODO: extend
@@ -96,12 +98,12 @@ if __name__ == "__main__":
         json.dump(new_data_full, fp, ensure_ascii=False, indent=4)
     commit_info = api.upload_file(
         path_or_fileobj="new_failures_with_bad_commit_grouped_by_authors.json",
-        path_in_repo=f"{report_repo_folder}/ci_results_run_models_gpu/new_failures_with_bad_commit_grouped_by_authors.json",
+        path_in_repo=f"{report_repo_folder}/ci_results_{job_name}/new_failures_with_bad_commit_grouped_by_authors.json",
         repo_id="hf-internal-testing/transformers_daily_ci",
         repo_type="dataset",
         token=os.environ.get("TRANSFORMERS_CI_RESULTS_UPLOAD_TOKEN", None),
     )
-    url = f"https://huggingface.co/datasets/hf-internal-testing/transformers_daily_ci/raw/{commit_info.oid}/{report_repo_folder}/ci_results_run_models_gpu/new_failures_with_bad_commit_grouped_by_authors.json"
+    url = f"https://huggingface.co/datasets/hf-internal-testing/transformers_daily_ci/raw/{commit_info.oid}/{report_repo_folder}/ci_results_{job_name}/new_failures_with_bad_commit_grouped_by_authors.json"
 
     # Add `GH_` prefix as keyword mention
     output = {}
