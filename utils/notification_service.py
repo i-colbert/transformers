@@ -530,7 +530,7 @@ class Message:
             # To save the list of new model failures and uploaed to hub repositories
             extra_blocks = self.get_new_model_failure_blocks(prev_ci_artifacts=prev_ci_artifacts, to_truncate=False)
             if extra_blocks:
-                filename = "new_model_failures"
+                filename = "new_failures"
                 if idx > 0:
                     filename = f"{filename}_against_{prev_workflow_run_id}"
 

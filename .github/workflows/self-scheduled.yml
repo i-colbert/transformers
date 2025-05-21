@@ -587,7 +587,7 @@ jobs:
 
     secrets: inherit
 
-  check_new_model_failures:
+  check_new_failures:
     if: ${{ always() && inputs.ci_event == 'Daily CI' && inputs.job == 'run_models_gpu' && needs.send_results.result == 'success' }}
     name: Check new model failures
     needs: send_results

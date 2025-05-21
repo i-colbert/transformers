@@ -42,11 +42,11 @@ jobs:
       - name: Check file
         working-directory: /transformers
         run: |
-          if [ -f ci_results_run_models_gpu/new_model_failures.json ]; then
-            echo "`ci_results_run_models_gpu/new_model_failures.json` exists, continue ..."
+          if [ -f ci_results_run_models_gpu/new_failures.json ]; then
+            echo "`ci_results_run_models_gpu/new_failures.json` exists, continue ..."
             echo "process=true" >> $GITHUB_ENV
           else
-            echo "`ci_results_run_models_gpu/new_model_failures.json` doesn't exist, abort."
+            echo "`ci_results_run_models_gpu/new_failures.json` doesn't exist, abort."
             echo "process=false" >> $GITHUB_ENV
           fi
 
@@ -112,14 +112,14 @@ jobs:
       - name: Check failed tests
         working-directory: /transformers
         if: ${{ env.process == 'true' }}
-        run: python3 utils/check_bad_commit.py --start_commit ${{ inputs.start_sha }} --end_commit ${{ env.END_SHA }} --file ci_results_run_models_gpu/new_model_failures.json --output_file new_model_failures_with_bad_commit.json
+        run: python3 utils/check_bad_commit.py --start_commit ${{ inputs.start_sha }} --end_commit ${{ env.END_SHA }} --file ci_results_run_models_gpu/new_failures.json --output_file new_failures_with_bad_commit.json
 
       - name: Show results
         working-directory: /transformers
         if: ${{ env.process == 'true' }}
         run: |
-          ls -l new_model_failures_with_bad_commit.json
-          cat new_model_failures_with_bad_commit.json
+          ls -l new_failures_with_bad_commit.json
+          cat new_failures_with_bad_commit.json
 
       - name: Checkout back
         working-directory: /transformers
