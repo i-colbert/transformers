@@ -1214,7 +1214,7 @@ class AutomaticSpeechRecognitionPipelineTests(unittest.TestCase):
     @require_torch
     @require_torchaudio
     def test_simple_whisper_translation_dummy(self):
-        assert 1 == 1
+        assert 1 == 2
 
     @slow
     @require_torch

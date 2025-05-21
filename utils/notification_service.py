@@ -717,7 +717,7 @@ class Message:
         if prev_ci_artifacts is None:
             return []
 
-        if job_name == "run_models_gpu":
+        if job_name in ["run_models_gpu", "run_trainer_and_fsdp_gpu"]:
             model_results = self.model_results
         else:
             model_results = self.additional_results[job_to_test_map[job_name]]

@@ -134,7 +134,7 @@ class AwqTest(unittest.TestCase):
         gc.collect()
 
     def test_foo(self):
-        assert 1 == 1
+        assert 1 == 2
 
     def test_quantized_model_conversion(self):
         """

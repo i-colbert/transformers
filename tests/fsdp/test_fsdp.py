@@ -184,7 +184,7 @@ class TrainerIntegrationFSDP(TestCasePlus, TrainerIntegrationCommon):
         super().tearDown()
 
     def test_accelerate_fsdp_config_dummy(self):
-        assert 1 == 1
+        assert 1 == 2
 
     @parameterized.expand(params, name_func=_parameterized_custom_name_func)
     def test_accelerate_fsdp_config(self, sharding_strategy, dtype):
