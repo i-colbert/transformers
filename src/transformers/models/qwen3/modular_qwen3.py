@@ -94,7 +94,7 @@ class Qwen3Attention(LlamaAttention):
             cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
             key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
 
-        if self.attention_interface is not None:
+        if self.attention_interface is None:
             self.attention_interface: Callable = eager_attention_forward
             if self.config._attn_implementation != "eager":
                 if self.config._attn_implementation == "sdpa" and kwargs.get("output_attentions", False):
